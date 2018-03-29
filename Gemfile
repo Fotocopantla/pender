@@ -18,7 +18,7 @@ gem 'simplecov', require: false, group: :test
 gem 'railroady'
 gem 'airbrake', '4.3.3'
 gem 'codeclimate-test-reporter', '0.6.0', group: :test, require: nil
-gem 'awesome_print', require: false, group: :development
+gem 'awesome_print', require: false
 gem 'gem-licenses'
 gem 'thin'
 gem 'protected_attributes'

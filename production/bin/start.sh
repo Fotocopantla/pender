@@ -8,7 +8,7 @@ function config_replace() {
     #    echo evaluating $VAR $VAL $FILE;
     if grep --quiet "dd${VAR}dd" $FILE; then
         echo "setting $VAR to $VAL in $FILE"
-        CMD="s/dd${VAR}dd/${VAL}/g"
+        CMD="s|dd${VAR}dd|${VAL}|g"
         sed -i'.bak' -e ${CMD} ${FILE}
     fi
 }
