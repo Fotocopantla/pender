@@ -291,7 +291,7 @@ class MediaTest < ActiveSupport::TestCase
     assert_nothing_raised do
       m = create_media url: 'http://www.almasryalyoum.com/node/517699', request: request
       data = m.as_json
-      assert_match /https?:\/\/www.almasryalyoum.com\/editor\/details\/968/, data['url']
+      assert_match /https:\/\/www.almasryalyoum.com\/editor\/details\/968/, data['url']
     end
   end
 
@@ -310,9 +310,9 @@ class MediaTest < ActiveSupport::TestCase
       media = create_media url: url
       data = media.as_json
       assert_equal 'https://www.facebook.com/caiosba', data['url']
-      assert_equal 'Caio Sacramento', data['title']
+      assert_match /Caio Sacramento/, data['title']
       assert_equal 'caiosba', data['username']
-      assert_equal 'https://www.facebook.com/app_scoped_user_id/100001147915899/', data['author_url']
+      assert_equal 'https://www.facebook.com/caiosba', data['author_url']
       assert_equal 'facebook', data['provider']
       assert_equal 'user', data['subtype']
       assert_not_nil data['description']
@@ -325,7 +325,7 @@ class MediaTest < ActiveSupport::TestCase
     m = create_media url: 'https://facebook.com/caiosba'
     data = m.as_json
     assert_equal 'https://www.facebook.com/caiosba', data['url']
-    assert_equal 'Caio Sacramento', data['title']
+    assert_match /Caio Sacramento/, data['title']
     assert_equal 'caiosba', data['username']
     assert_equal 'facebook', data['provider']
     assert_equal 'user', data['subtype']
@@ -344,21 +344,19 @@ class MediaTest < ActiveSupport::TestCase
   # http://errbit.test.meedan.net/apps/576218088583c6f1ea000231/problems/57a1bf968583c6f1ea000c01
   # https://mantis.meedan.com/view.php?id=4913
   test "should parse numeric Facebook profile 2" do
-    variations = %w(
-      https://www.facebook.com/noha.n.daoud
-      https://facebook.com/515336093
-    )
-    variations.each do |url|
-      media = Media.new(url: url)
-      data = media.as_json
-      assert_equal 'Noha Nazieh Daoud', data['title']
-      assert_equal 'https://www.facebook.com/app_scoped_user_id/515336093/', data['author_url']
-      assert_equal 'facebook', data['provider']
-      assert_equal 'user', data['subtype']
-      assert_not_nil data['description']
-      assert_not_nil data['picture']
-      assert_not_nil data['published_at']
-    end
+    url = 'https://www.facebook.com/noha.n.daoud'
+    media = Media.new(url: url)
+    data = media.as_json
+    assert_equal 'Not Found', data['error']['message']
+  end
+
+  # http://errbit.test.meedan.net/apps/576218088583c6f1ea000231/problems/57a1bf968583c6f1ea000c01
+  # https://mantis.meedan.com/view.php?id=4913
+  test "should parse numeric Facebook profile 3" do
+    url = 'https://facebook.com/515336093'
+    media = Media.new(url: url)
+    data = media.as_json
+    assert_equal 'Login required to see this profile', data['error']['message']
   end
 
   test "should parse tweet" do
@@ -389,7 +387,7 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal 'Teste', d['author_name']
     assert_equal 0, d['media_count']
     assert_equal '1028416870556238', d['object_id']
-    assert_equal '18/11/2015', Time.parse(d['published_at']).strftime("%d/%m/%Y")
+    assert_equal '11/2015', d['published_at'].strftime("%m/%Y")
   end
 
   test "should create Facebook post from page photo URL" do
@@ -401,7 +399,7 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal 'Teste', d['author_name']
     assert_equal 1, d['media_count']
     assert_equal '896869113711015', d['object_id']
-    assert_equal '09/03/2015', Time.parse(d['published_at']).strftime("%d/%m/%Y")
+    assert_equal '03/2015', d['published_at'].strftime("%m/%Y")
   end
 
   test "should create Facebook post from page photo URL 2" do
@@ -413,7 +411,7 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal 'Teste', d['author_name']
     assert_equal 1, d['media_count']
     assert_equal '1028424567222135', d['object_id']
-    assert_equal '18/11/2015', Time.parse(d['published_at']).strftime("%d/%m/%Y")
+    assert_equal '11/2015', d['published_at'].strftime("%m/%Y")
   end
 
   test "should create Facebook post from page photos URL" do
@@ -425,7 +423,7 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal 'Teste', d['author_name']
     assert_equal 2, d['media_count']
     assert_equal '1028795030518422', d['object_id']
-    assert_equal '18/11/2015', Time.parse(d['published_at']).strftime("%d/%m/%Y")
+    assert_equal '11/2015', d['published_at'].strftime("%m/%Y")
   end
 
   test "should create Facebook post from user photos URL" do
@@ -445,7 +443,7 @@ class MediaTest < ActiveSupport::TestCase
     m = create_media url: 'https://www.facebook.com/photo.php?fbid=981302451896323&set=a.155912291102014.38637.100000497329098&type=3&theater'
     d = m.as_json
     assert_equal '100000497329098_981302451896323', d['uuid']
-    assert_equal '', d['text']
+    assert_equal 'Kiko Loureiro added a new photo.', d['text']
     assert_equal '100000497329098', d['user_uuid']
     assert_equal 'Kiko Loureiro', d['author_name']
     assert_not_nil d['picture']
@@ -483,11 +481,11 @@ class MediaTest < ActiveSupport::TestCase
 
     m = create_media url: 'https://www.facebook.com/teste637621352/posts/1035783969819528'
     d = m.as_json
-    assert_nil d['picture']
+    assert_not_nil d['picture']
     assert_match /^https/, d['author_picture']
     assert_kind_of Array, d['photos']
     assert_equal 0, d['media_count']
-    assert_equal 0, d['photos'].size
+    assert_equal 1, d['photos'].size
 
     m = create_media url: 'https://www.facebook.com/johnwlai/posts/10101205465813840?pnref=story'
     d = m.as_json
@@ -513,7 +511,7 @@ class MediaTest < ActiveSupport::TestCase
     m = create_media url: 'https://m.facebook.com/photo.php?fbid=981302451896323&set=a.155912291102014.38637.100000497329098&type=3&theater'
     d = m.as_json
     assert_equal '100000497329098_981302451896323', d['uuid']
-    assert_equal '', d['text']
+    assert_equal 'Kiko Loureiro added a new photo.', d['text']
     assert_equal '100000497329098', d['user_uuid']
     assert_equal 'Kiko Loureiro', d['author_name']
     assert_equal 1, d['media_count']
@@ -572,12 +570,14 @@ class MediaTest < ActiveSupport::TestCase
   test "should parse Facebook photo post within an album url" do
     m = create_media url: 'https://www.facebook.com/ESCAPE.Egypt/photos/ms.c.eJxNk8d1QzEMBDvyQw79N2ZyaeD7osMIwAZKLGTUViod1qU~;DCBNHcpl8gfMKeR8bz2gH6ABlHRuuHYM6AdywPkEsH~;gqAjxqLAKJtQGZFxw7CzIa6zdF8j1EZJjXRgTzAP43XBa4HfFa1REA2nXugScCi3wN7FZpF5BPtaVDEBqwPNR60O9Lsi0nbDrw3KyaPCVZfqAYiWmZO13YwvSbtygCWeKleh9KEVajW8FfZz32qcUrNgA5wfkA4Xfh004x46d9gdckQt2xR74biSOegwIcoB9OW~_oVIxKML0JWYC0XHvDkdZy0oY5bgjvBAPwdBpRuKE7kZDNGtnTLoCObBYqJJ4Ky5FF1kfh75Gnyl~;Qxqsv.bps.a.1204090389632094.1073742218.423930480981426/1204094906298309/?type=3&theater'
     d = m.as_json
+    assert_equal '09/2016', d['published_at'].strftime('%m/%Y')
     assert_equal 'item', d['type']
     assert_equal 'Escape on Facebook', d['title']
-    assert_equal 'Photos by Ahmed Tarek Bayoumi', d['description']
+    assert_equal 'Escape added a new photo.', d['description']
     assert_match /423930480981426/, d['author_picture']
-    assert_match /1204094832964983_7206455761034252173/, d['picture']
-    assert_equal '1204090389632094', d['object_id']
+    assert_equal 1, d['photos'].size
+    assert_match /^https:/, d['picture']
+    assert_equal '1204094906298309', d['object_id']
   end
 
   test "should parse Facebook pure text post url" do
@@ -622,13 +622,11 @@ class MediaTest < ActiveSupport::TestCase
   test "should parse Facebook event url" do
     m = create_media url: 'https://www.facebook.com/events/1090503577698748'
     d = m.as_json
-    assert_equal 'Nancy Ajram in Stella Di Mare Music Festival on Facebook', d['title']
-    assert_equal 'Nancy Ajram will be performing in Stella Di Mare, September 13th, 2016 in Egypt. For tickets and information please contact 19565.', d['description']
-    assert_equal '25432690933', d['user_uuid']
-    assert_equal '1090503577698748', d['object_id']
+    assert_equal 'Nancy Ajram on Facebook', d['title']
+    assert_not_nil d['description']
     assert_nil d['picture']
-    assert_match /1090503577698748/, d['author_picture']
     assert_not_nil d['published_at']
+    assert_match /1090503577698748/, d['author_picture']
   end
 
   test "should parse album post with a permalink" do
@@ -647,9 +645,7 @@ class MediaTest < ActiveSupport::TestCase
     d = m.as_json
     assert_equal 'New Quoted Pictures Everyday on Facebook', d['title']
     assert_not_nil d['description']
-    assert_match /^https?:\/\/([^\.]+\.)?(giphy\.com|gph\.is)\/.*/, d['link']
-    assert_match /.*giphy.gif$/, d['photos'].first
-    assert_equal 1, d['media_count']
+    assert_match /giphy.gif/, d['photos'].first
   end
 
   test "should parse twitter metatags" do
@@ -695,9 +691,10 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal '', d['username']
     assert_equal 'https://xkcd.com', d['author_url']
 
-    path = File.join(Rails.root, 'public', 'screenshots', 'https-xkcd-com-1479.png')
+    filename = Digest::MD5.hexdigest(m.url.parameterize) + '.png'
+    path = File.join(Rails.root, 'public', 'screenshots', filename)
     assert File.exists?(path)
-    assert_match /\/screenshots\/https-xkcd-com-1479.png$/, d['picture']
+    assert_match /\/screenshots\/#{filename}$/, d['picture']
   end
 
   test "should parse meta tags as fallback 2" do
@@ -712,9 +709,10 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal '', d['username']
     assert_equal 'http://ca.ios.ba', d['author_url']
 
-    path = File.join(Rails.root, 'public', 'screenshots', 'http-ca-ios-ba.png')
+    filename = Digest::MD5.hexdigest(m.url.parameterize) + '.png'
+    path = File.join(Rails.root, 'public', 'screenshots', filename)
     assert File.exists?(path)
-    assert_match /\/screenshots\/http-ca-ios-ba.png$/, d['picture']
+    assert_match /\/screenshots\/#{filename}$/, d['screenshot']
   end
 
   test "should parse Facebook photo on page album" do
@@ -793,7 +791,7 @@ class MediaTest < ActiveSupport::TestCase
     m = create_media url: 'https://www.reddit.com/r/Art/comments/58a8kp/emotions_language_youngjoo_namgung_ai_livesurface/'
     d = m.as_json
     assert_match /emotion's language, Youngjoo Namgung/, d['title']
-    assert_match /.* points and .* comments so far on reddit/, d['description']
+    assert_match /.* (points|votes) and .* so far on reddit/, d['description']
     assert_equal '', d['published_at']
     assert_equal '', d['username']
     assert_equal 'https://www.reddit.com', d['author_url']
@@ -808,7 +806,7 @@ class MediaTest < ActiveSupport::TestCase
     assert_not_nil d['published_at']
     assert_equal '', d['username']
     assert_equal 'http://www.youm7.com', d['author_url']
-    assert_equal 'http://img.youm7.com/large/72016619556415g.jpg', d['picture']
+    assert_equal 'https://img.youm7.com/large/72016619556415g.jpg', d['picture']
   end
 
   test "should store the picture address" do
@@ -822,7 +820,8 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal '', d['published_at']
     assert_equal '', d['username']
     assert_equal 'https://xkcd.com', d['author_url']
-    assert_match /\/screenshots\/https-xkcd-com-448\.png/, d['picture']
+    filename = Digest::MD5.hexdigest(m.url.parameterize) + '.png'
+    assert_match /\/screenshots\/#{filename}$/, d['screenshot']
   end
 
   test "should get relative canonical URL parsed from html tags" do
@@ -862,9 +861,9 @@ class MediaTest < ActiveSupport::TestCase
   end
 
   test "should get canonical URL from facebook object" do
-    expected = 'https://www.facebook.com/democrats/videos/10154268929856943'
+    expected = 'https://www.facebook.com/democrats/videos/10154268929856943/'
     variations = %w(
-      https://www.facebook.com/democrats/videos/10154268929856943/
+      https://www.facebook.com/democrats/videos/10154268929856943
       https://www.facebook.com/democrats/posts/10154268929856943/
     )
     variations.each do |url|
@@ -877,11 +876,11 @@ class MediaTest < ActiveSupport::TestCase
   test "should get canonical URL from facebook object 2" do
     media = Media.new(url: 'https://www.facebook.com/permalink.php?story_fbid=10154534111016407&id=54212446406')
     media.as_json({ force: 1 })
-    assert_equal 'https://www.facebook.com/permalink.php?story_fbid=10154534111016407&id=54212446406', media.url
+    assert_equal 'https://www.facebook.com/media/set/?set=a.10154534110871407.1073742048.54212446406&type=3', media.url
   end
 
   test "should get canonical URL from facebook object 3" do
-    expected = 'https://www.facebook.com/media/set?set=a.10154534110871407.1073742048.54212446406&type=3'
+    expected = 'https://www.facebook.com/media/set/?set=a.10154534110871407.1073742048.54212446406&type=3'
     variations = %w(
       https://www.facebook.com/54212446406/photos/a.10154534110871407.1073742048.54212446406/10154534111016407/?type=3
       https://www.facebook.com/54212446406/photos/a.10154534110871407.1073742048.54212446406/10154534111016407?type=3
@@ -895,7 +894,7 @@ class MediaTest < ActiveSupport::TestCase
 
   test "should parse facebook url with a photo album" do
     expected = {
-      url: 'https://www.facebook.com/Classic.mou/posts/613639338813733',
+      url: 'https://www.facebook.com/Classic.mou/photos/a.136991166478555.1073741828.136985363145802/613639175480416/?type=3',
       title: 'Classic on Facebook',
       username: 'Classic.mou',
       author_name: 'Classic',
@@ -912,8 +911,8 @@ class MediaTest < ActiveSupport::TestCase
       data = media.as_json
       expected.each do |key, value|
         assert_equal value, data[key]
-        assert_match /613639042147096_5586727492554773434/, data[:picture]
-        assert_match /خلال افتتاح معرض لفساتين الزفاف بالسويد اليوم تم عرض جميع فساتين زفاف/, data[:description]
+        assert_match /613639175480416_2497518582358260577/, data[:picture]
+        assert_match /Classic added a new photo/, data[:description]
       end
     end
   end
@@ -935,7 +934,7 @@ class MediaTest < ActiveSupport::TestCase
   test "should parse Facebook live post from mobile URL" do
     m = create_media url: 'https://m.facebook.com/story.php?story_fbid=10154584426664820&id=355665009819%C2%ACif_t=live_video%C2%ACif_id=1476846578702256&ref=bookmarks'
     data = m.as_json
-    assert_equal 'https://www.facebook.com/scmp/videos/10154584426664820', m.url
+    assert_equal 'https://www.facebook.com/scmp/videos/10154584426664820/', m.url
     assert_equal 'South China Morning Post on Facebook', data['title']
     assert_match /SCMP #FacebookLive amid chaotic scenes in #HongKong Legco/, data['description']
     assert_not_nil data['published_at']
@@ -948,7 +947,7 @@ class MediaTest < ActiveSupport::TestCase
   test "should parse Facebook live post" do
     m = create_media url: 'https://www.facebook.com/cbcnews/videos/10154783484119604/'
     data = m.as_json
-    assert_equal 'https://www.facebook.com/cbcnews/videos/10154783484119604', m.url
+    assert_equal 'https://www.facebook.com/cbcnews/videos/10154783484119604/', m.url
     assert_equal 'CBC News on Facebook', data['title']
     assert_equal 'Live now: This is the National for Monday, Oct. 31, 2016.', data['description']
     assert_not_nil data['published_at']
@@ -968,7 +967,6 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal 'teste637621352', data['username']
     assert_equal 'http://facebook.com/749262715138323', data['author_url']
     assert_equal 'https://graph.facebook.com/749262715138323/picture', data['author_picture']
-    assert_nil data['picture']
   end
 
   test "should parse Facebook livemap" do
@@ -984,10 +982,10 @@ class MediaTest < ActiveSupport::TestCase
     variations.each do |url|
       m = create_media url: url, request: request
       data = m.as_json
-      assert_equal 'Not Identified on Facebook', data['title']
+      assert_equal 'Facebook Live Map on Facebook', data['title']
       assert_equal 'Explore live videos from around the world.', data['description']
       assert_not_nil data['published_at']
-      assert_equal 'Not Identified', data['username']
+      assert_equal 'Facebook Live Map', data['username']
       assert_equal 'http://facebook.com/', data['author_url']
       assert_equal '', data['author_picture']
       assert_nil data['picture']
@@ -998,26 +996,26 @@ class MediaTest < ActiveSupport::TestCase
   test "should parse Facebook event post" do
     m = create_media url: 'https://www.facebook.com/events/364677040588691/permalink/376287682760960/?ref=1&action_history=null'
     data = m.as_json
-    assert_equal 'https://www.facebook.com/events/364677040588691/permalink/376287682760960', m.url
-    assert_equal 'Zawya on Facebook', data['title']
-    assert_match /توضيح عن عرض فيلم الحرّيف/, data['description']
+    assert_equal 'https://www.facebook.com/events/364677040588691/permalink/376287682760960?ref=1&action_history=null', m.url
     assert_not_nil data['published_at']
-    assert_equal 'Zawya', data['username']
     assert_match /#{data['user_uuid']}/, data['author_url']
-    assert_match /14716274_1184539554945737_3479338944730951318/, data['picture']
+    assert_match /^https:/, data['picture']
+    assert_equal 'Zawya on Facebook', data['title']
+    assert_match /لختامي من فيلم/, data['description']
+    assert_equal 'Zawya', data['username']
   end
 
   test "should parse Facebook event post 2" do
     m = create_media url: 'https://www.facebook.com/events/364677040588691/permalink/379973812392347/?ref=1&action_history=null'
     data = m.as_json
-    assert_equal 'https://www.facebook.com/events/364677040588691/permalink/379973812392347', m.url
-    assert_equal 'ابراهيمو ڤيتش on Facebook', data['title']
-    assert_equal 'مفيش حاجة قريب ل ا. داواد عبدالسيد ؟!!', data['description']
+    assert_equal 'https://www.facebook.com/events/364677040588691/permalink/379973812392347?ref=1&action_history=null', m.url
+    assert_equal 'Zawya on Facebook', data['title']
+    assert_match /يقول فارس لرزق أنه/, data['description']
     assert_not_nil data['published_at']
-    assert_equal 'ابراهيمو ڤيتش', data['username']
+    assert_equal 'Zawya', data['username']
     assert_match /#{data['user_uuid']}/, data['author_url']
     assert_match /#{data['user_uuid']}/, data['author_picture']
-    assert_nil data['picture']
+    assert_not_nil data['picture']
   end
 
   test "should parse url with arabic chars" do
@@ -1054,7 +1052,7 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal '', d['published_at']
     assert_equal 'Emerson T. Brooking and P. W. Singer', d['username']
     assert_equal 'https://www.theatlantic.com', d['author_url']
-    assert_equal 'https://cdn.theatlantic.com/assets/media/img/2016/10/WEL_Singer_SocialWar_opener_ALT/facebook.jpg?1475683228', d['picture']
+    assert_match /https:\/\/cdn\.theatlantic\.com\/assets\/media\/img\/2016\/10\/WEL_Singer_SocialWar_opener_ALT\/facebook\.jpg/, d['picture']
   end
 
   test "should parse url 2" do
@@ -1093,14 +1091,14 @@ class MediaTest < ActiveSupport::TestCase
   end
 
   test "should parse bridge url" do
-    m = create_media url: 'https://new.speakbridge.io/medias/embed/viber/1/403'
+    m = create_media url: 'https://speakbridge.io/medias/embed/viber/1/403'
     d = m.as_json
     assert_equal 'Translations of Viberهل يحتوي هذا الطعام على لحم الخنزير؟', d['title']
     assert_equal 'هل يحتوي هذا الطعام على لحم الخنزير؟', d['description']
     assert_not_nil d['published_at']
     assert_equal '', d['username']
     assert_equal '', d['author_url']
-    assert_equal 'https://new.speakbridge.io/medias/embed/viber/1/403.png', d['picture']
+    assert_equal 'https://speakbridge.io/medias/embed/viber/1/403.png', d['picture']
   end
 
   test "should parse facebook url without identified pattern as item" do
@@ -1177,7 +1175,7 @@ class MediaTest < ActiveSupport::TestCase
     OpenURI.stubs(:open_uri).raises(Errno::ECONNRESET)
     m = create_media url: url
     assert_nothing_raised do
-      m.send(:get_html, m.send(:html_options))
+      m.send(:get_html, Media.send(:html_options, m.url))
     end
     OpenURI.unstub(:open_uri)
   end
@@ -1273,7 +1271,7 @@ class MediaTest < ActiveSupport::TestCase
   test "should set url with the permalink_url returned by facebook api" do
     m = create_media url: 'https://www.facebook.com/nostalgia.y/photos/a.508939832569501.1073741829.456182634511888/942167619246718/?type=3&theater'
     d = m.as_json
-    assert_equal 'https://www.facebook.com/nostalgia.y/photos/a.508939832569501.1073741829.456182634511888/942167619246718?type=3', m.url
+    assert_equal 'https://www.facebook.com/nostalgia.y/photos/a.508939832569501.1073741829.456182634511888/942167619246718/?type=3', m.url
   end
 
   test "should set url with the permalink_url returned by facebook api 2" do
@@ -1296,7 +1294,7 @@ class MediaTest < ActiveSupport::TestCase
     assert_equal 'http://facebook.com/136985363145802', d['author_url']
     assert_equal 'https://graph.facebook.com/136985363145802/picture', d['author_picture']
     assert_match /16473884_666508790193454_8112186335057907723/, d['picture']
-    assert_equal 'https://www.facebook.com/Classic.mou/posts/666508790193454:0', m.url
+    assert_equal 'https://www.facebook.com/Classic.mou/photos/a.136991166478555.1073741828.136985363145802/666508790193454/?type=3', m.url
   end
 
   test "should parse pages when the scheme is missing on oembed url" do
@@ -1334,10 +1332,10 @@ class MediaTest < ActiveSupport::TestCase
   test "should handle zlib error when opening a url" do
     m = create_media url: 'https://ca.yahoo.com'
     parsed_url = Media.parse_url( m.url)
-    header_options = m.send(:html_options)
+    header_options = Media.send(:html_options, m.url)
     OpenURI.stubs(:open_uri).with(parsed_url, header_options).raises(Zlib::DataError)
     OpenURI.stubs(:open_uri).with(parsed_url, header_options.merge('Accept-Encoding' => 'identity'))
-    m.send(:get_html, m.send(:html_options))
+    m.send(:get_html, Media.send(:html_options, m.url))
     OpenURI.unstub(:open_uri)
   end
 
@@ -1348,7 +1346,7 @@ class MediaTest < ActiveSupport::TestCase
 
     m = create_media url: 'https://www.scmp.com/news/china/diplomacy-defence/article/2110488/china-tries-build-bigger-bloc-stop-brics-crumbling'
     parsed_url = Media.parse_url(m.url)
-    header_options = m.send(:html_options)
+    header_options = Media.send(:html_options, m.url)
     OpenURI.stubs(:open_uri).with(parsed_url, header_options).raises('redirection forbidden')
     Airbrake.configuration.stubs(:api_key).returns('token')
 
@@ -1383,13 +1381,13 @@ class MediaTest < ActiveSupport::TestCase
   end
 
   test "should redirect to HTTPS if available and not already HTTPS" do
-    m = create_media url: 'http://ironmaiden.com'
-    assert_equal 'https://ironmaiden.com/', m.url
+    m = create_media url: 'http://imotorhead.com'
+    assert_equal 'https://imotorhead.com/', m.url
   end
 
   test "should not redirect to HTTPS if available and already HTTPS" do
-    m = create_media url: 'https://ironmaiden.com'
-    assert_equal 'https://ironmaiden.com/', m.url
+    m = create_media url: 'https://imotorhead.com'
+    assert_equal 'https://imotorhead.com/', m.url
   end
 
   test "should not redirect to HTTPS if not available" do
@@ -1475,9 +1473,9 @@ class MediaTest < ActiveSupport::TestCase
     assert_match(/En el Museo Serralves de Oporto/, d['text'])
     assert_equal '54212446406', d['user_uuid']
     assert_equal 'Mariano Rajoy Brey', d['author_name']
-    assert_equal 10, d['media_count']
+    assert d['media_count'] > 20
     assert_equal '10154534110871407', d['object_id']
-    assert_equal 'https://www.facebook.com/media/set?set=a.10154534110871407.1073742048.54212446406&type=3', m.url
+    assert_equal 'https://www.facebook.com/media/set/?set=a.10154534110871407.1073742048.54212446406&type=3', m.url
   end
 
   test "should get all information of a truncated tweet" do
@@ -1491,12 +1489,11 @@ class MediaTest < ActiveSupport::TestCase
     m = create_media url: 'https://www.facebook.com/pg/Mariano-Rajoy-Brey-54212446406/photos/?tab=album&album_id=10154534110871407'
     d = m.as_json
     assert_equal '54212446406_10154534110871407', d['uuid']
-    assert_match(/En el Museo Serralves de Oporto/, d['text'])
+    assert_match(/Presidente del Partido Popular/, d['text'])
     assert_equal '54212446406', d['user_uuid']
     assert_equal 'Mariano Rajoy Brey', d['author_name']
-    assert_equal 10, d['media_count']
     assert_equal '10154534110871407', d['object_id']
-    assert_equal 'https://www.facebook.com/media/set?set=a.10154534110871407.1073742048.54212446406&type=3', m.url
+    assert_equal 'https://www.facebook.com/Mariano-Rajoy-Brey-54212446406/photos', m.url
   end
 
   test "should support facebook pattern with album" do
@@ -1506,9 +1503,9 @@ class MediaTest < ActiveSupport::TestCase
     assert_match(/En el Museo Serralves de Oporto/, d['text'])
     assert_equal '54212446406', d['user_uuid']
     assert_equal 'Mariano Rajoy Brey', d['author_name']
-    assert_equal 10, d['media_count']
+    assert d['media_count'] > 20
     assert_equal '10154534110871407', d['object_id']
-    assert_equal 'https://www.facebook.com/media/set?set=a.10154534110871407.1073742048.54212446406&type=3', m.url
+    assert_equal 'https://www.facebook.com/media/set/?set=a.10154534110871407.1073742048.54212446406&type=3', m.url
   end
 
   test "should get facebook data from original_url when url fails" do
@@ -1517,10 +1514,9 @@ class MediaTest < ActiveSupport::TestCase
     m = create_media url: 'https://www.facebook.com/pg/Mariano-Rajoy-Brey-54212446406/photos'
     d = m.as_json
     assert_equal '54212446406_10154534110871407', d['uuid']
-    assert_match(/En el Museo Serralves de Oporto/, d['text'])
+    assert_match(/Presidente del Partido Popular/, d['text'])
     assert_equal '54212446406', d['user_uuid']
     assert_equal 'Mariano Rajoy Brey', d['author_name']
-    assert_equal 10, d['media_count']
     assert_equal '10154534110871407', d['object_id']
     Media.any_instance.unstub(:url)
     Media.any_instance.unstub(:original_url)
@@ -1576,34 +1572,12 @@ class MediaTest < ActiveSupport::TestCase
     assert !data['raw']['metatags'].empty?
   end
 
-  test "should store data of a post returned by facebook API" do
-    m = create_media url: 'https://www.facebook.com/nostalgia.y/photos/a.508939832569501.1073741829.456182634511888/942167619246718/?type=3&theater'
-    data = m.as_json
-    assert data['raw']['api'].is_a? Hash
-    assert !data['raw']['api'].empty?
-  end
-
   test "should store data of a profile returned by facebook API" do
     m = create_media url: 'https://www.facebook.com/profile.php?id=100008161175765&fref=ts'
     data = m.as_json
-    assert data['raw']['api'].is_a? Hash
-    assert !data['raw']['api'].empty?
 
     assert_equal 'Tico-Santa-Cruz', data[:username]
     assert_equal 'Tico Santa Cruz', data[:title]
-    assert !data[:picture].blank?
-  end
-
-  test "should store data of a page returned by facebook API" do
-    m = create_media url: 'https://www.facebook.com/pages/Meedan/105510962816034?fref=ts'
-    data = m.as_json
-    assert data['raw']['api'].is_a? Hash
-    assert !data['raw']['api'].empty?
-
-    assert_equal 'Meedan', data[:username]
-    assert_equal 'Meedan', data[:title]
-    assert_match /Meedan is a non-profit social technology company/, data[:description]
-    assert !data[:likes].blank?
     assert !data[:picture].blank?
   end
 
@@ -1787,23 +1761,8 @@ class MediaTest < ActiveSupport::TestCase
     assert_not_nil d['published_at']
     assert_equal '', d['username']
     assert_equal 'https://noticias.uol.com.br', d['author_url']
-    assert_equal 'Cotidiano', d['author_name']
+    assert_equal '@UOL', d['author_name']
     assert_not_nil d['picture']
-    assert_nil d['error']
-  end
-
-  test "should parse url with redirection https -> http 2" do
-    m = create_media url: 'https://www.nature.com/articles/s41562-017-0132'
-    d = m.as_json
-    assert_equal 'item', d['type']
-    assert_equal 'page', d['provider']
-    assert_equal 'Limited individual attention and online virality of low-quality inform', d['title']
-    assert_not_nil d['description']
-    assert_not_nil d['published_at']
-    assert_equal '', d['username']
-    assert_equal 'https://www.nature.com', d['author_url']
-    assert_equal '@NatureHumBehav', d['author_name']
-    assert_match /image-assets\/s41562-017-0132-f1.jpg/,  d['picture']
     assert_nil d['error']
   end
 
@@ -1812,12 +1771,12 @@ class MediaTest < ActiveSupport::TestCase
     d = m.as_json
     assert_equal 'item', d['type']
     assert_equal 'page', d['provider']
-    assert_match /UOL Notícias:/, d['title']
+    assert_match /Acompanhe as últimas notícias do Brasil e do mundo/, d['title']
     assert_not_nil d['description']
     assert_not_nil d['published_at']
     assert_equal '', d['username']
     assert_equal 'https://noticias.uol.com.br', d['author_url']
-    assert_equal 'UOL Notícias', d['author_name']
+    assert_equal '@UOL', d['author_name']
     assert_not_nil d['picture']
     assert_nil d['error']
   end
@@ -1892,7 +1851,7 @@ class MediaTest < ActiveSupport::TestCase
     id = Media.get_id(url)
     m = create_media url: url, key: a
     data = m.as_json
-    filename = url.parameterize + '.png'
+    filename = Digest::MD5.hexdigest(m.url.parameterize) + '.png'
     path = File.join(Rails.root, 'public', 'screenshots', filename)
     assert File.exists?(path)
     assert_equal 0, Rails.cache.read(id)['screenshot_taken']
@@ -1915,7 +1874,7 @@ class MediaTest < ActiveSupport::TestCase
     id = Media.get_id(url)
     m = create_media url: url, key: a
     data = m.as_json
-    filename = url.parameterize + '.png'
+    filename = Digest::MD5.hexdigest(url.parameterize) + '.png'
     path = File.join(Rails.root, 'public', 'screenshots', filename)
     assert File.exists?(path)
 
@@ -2037,12 +1996,179 @@ class MediaTest < ActiveSupport::TestCase
     WebMock.disable!
   end
 
+  test "should archive Arabics url to Archive.org" do
+    Media.any_instance.unstub(:archive_to_archive_org)
+    a = create_api_key application_settings: { 'webhook_url': 'https://webhook.site/19cfeb40-3d06-41b8-8378-152fe12e29a8', 'webhook_token': 'test' }
+    urls = ['https://www.madamasr.com/ar/2018/03/13/feature/%D8%B3%D9%8A%D8%A7%D8%B3%D8%A9/%D9%82%D8%B1%D8%A7%D8%A1%D8%A9-%D9%81%D9%8A-%D8%AC%D8%B1%D8%A7%D8%A6%D9%85-%D8%A7%D9%84%D9%85%D8%B9%D9%84%D9%88%D9%85%D8%A7%D8%AA-%D8%AA%D9%82%D9%86%D9%8A%D9%86-%D9%84%D9%84%D8%AD%D8%AC', 'http://www.yallakora.com/ar/news/342470/%D8%A7%D8%AA%D8%AD%D8%A7%D8%AF-%D8%A7%D9%84%D9%83%D8%B1%D8%A9-%D8%B9%D9%86-%D8%A3%D8%B2%D9%85%D8%A9-%D8%A7%D9%84%D8%B3%D8%B9%D9%8A%D8%AF-%D9%84%D8%A7%D8%A8%D8%AF-%D9%85%D9%86-%D8%AD%D9%84-%D9%85%D8%B9-%D8%A7%D9%84%D8%B2%D9%85%D8%A7%D9%84%D9%83/2504']
+    WebMock.enable!
+    allowed_sites = lambda{ |uri| uri.host != 'web.archive.org' }
+    WebMock.disable_net_connect!(allow: allowed_sites)
+
+    assert_nothing_raised do
+      WebMock.stub_request(:any, /web.archive.org/).to_return(body: '', headers: {})
+      m = create_media url: urls[0], key: a
+      data = m.as_json
+
+      WebMock.stub_request(:any, /web.archive.org/).to_return(body: '', headers: { 'content-location' => '/web/123456/test' })
+      m = create_media url: urls[1], key: a
+      data = m.as_json
+    end
+
+    WebMock.disable!
+  end
+
   test "should validate author_url when taken from twitter metatags" do
     url = 'http://lnphil.blogspot.com.br/2018/01/villar-at-duterte-nagsanib-pwersa-para.html'
     m = create_media url: url
     data = m.as_json
     assert_equal m.send(:top_url, m.url), data['author_url']
     assert_equal '', data['username']
+  end
+
+  test "should use md5 hash on screenshot filename" do
+    Media.any_instance.unstub(:archive_to_screenshot)
+    request = 'http://localhost'
+    request.expects(:base_url).returns('http://localhost')
+    url = 'https://www.madamasr.com/ar/2018/03/13/feature/%D8%B3%D9%8A%D8%A7%D8%B3%D8%A9/%D9%82%D8%B1%D8%A7%D8%A1%D8%A9-%D9%81%D9%8A-%D8%AC%D8%B1%D8%A7%D8%A6%D9%85-%D8%A7%D9%84%D9%85%D8%B9%D9%84%D9%88%D9%85%D8%A7%D8%AA-%D8%AA%D9%82%D9%86%D9%8A%D9%86-%D9%84%D9%84%D8%AD%D8%AC'
+    m = create_media url: url, request: request
+    data = m.as_json
+    filename = Digest::MD5.hexdigest(url.parameterize) + '.png'
+    path = File.join(Rails.root, 'public', 'screenshots', filename)
+    assert File.exists?(path)
+    assert_match /\/screenshots\/#{filename}$/, data['screenshot']
+    assert data['error'].nil?
+  end
+
+  test "should handle error when cannot get twitter url" do
+    Media.any_instance.unstub(:archive_to_screenshot)
+    request = 'http://localhost'
+    request.expects(:base_url).returns('http://localhost')
+    Media.any_instance.stubs(:twitter_client).raises(Twitter::Error::Forbidden)
+    url = 'http://www.yallakora.com/ar/news/342470/%D8%A7%D8%AA%D8%AD%D8%A7%D8%AF-%D8%A7%D9%84%D9%83%D8%B1%D8%A9-%D8%B9%D9%86-%D8%A3%D8%B2%D9%85%D8%A9-%D8%A7%D9%84%D8%B3%D8%B9%D9%8A%D8%AF-%D9%84%D8%A7%D8%A8%D8%AF-%D9%85%D9%86-%D8%AD%D9%84-%D9%85%D8%B9-%D8%A7%D9%84%D8%B2%D9%85%D8%A7%D9%84%D9%83/2504'
+    m = create_media url: url, request: request
+    data = m.as_json
+    assert data['error'].nil?
+    Media.any_instance.unstub(:twitter_client)
+  end
+
+  test "should handle errors when call parse" do
+    Media.any_instance.unstub(:archive_to_screenshot)
+    request = 'http://localhost'
+    request.expects(:base_url).returns('http://localhost')
+    url = 'http://example.com'
+    m = create_media url: url, request: request
+    %w(oembed_item instagram_profile instagram_item page_item dropbox_item bridge_item facebook_item).each do |parser|
+      Media.any_instance.stubs("data_from_#{parser}").raises(StandardError)
+      data = m.as_json
+      assert_equal "StandardError: StandardError", data['error']['message']
+      Media.any_instance.unstub("data_from_#{parser}")
+    end
+  end
+
+  test "should parse website" do
+    url = 'http://www.acdc.com'
+    m = create_media url: url
+    data = m.as_json
+    assert_equal 'Homepage', data['title']
+  end
+
+  test "should have a transitive relation between normalized URLs" do
+    url = 'https://www.facebook.com/quoted.pictures/photos/a.128828073875334.28784.128791873878954/1096134023811396/?type=3&theater'
+    m = create_media url: url
+    data = m.as_json
+    url = 'https://www.facebook.com/quoted.pictures/photos/a.128828073875334.28784.128791873878954/1096134023811396/?type=3'
+    assert_equal url, data['url']
+
+    m = create_media url: url
+    data = m.as_json
+    assert_equal url, data['url']
+  end
+
+  test "should parse medium posts" do
+    url = 'https://medium.com/darius-foroux/how-to-retain-more-from-the-books-you-read-in-5-simple-steps-700d90653a41'
+    m = create_media url: url
+    d = m.as_json
+    assert_equal 'item', d['type']
+    assert_equal 'page', d['provider']
+    assert_equal 'How To Retain More From The Books You Read In 5 Simple Steps', d['title']
+    assert_equal 'Don’t read more. Read smarter.', d['description']
+    assert_equal '@DariusForoux', d['username']
+    assert_equal 'https://twitter.com/DariusForoux', d['author_url']
+    assert_not_nil d['picture']
+    assert_nil d['error']
+  end
+
+  test "should parse globalvoices url" do
+    url = 'https://globalvoices.org/2018/05/01/kidnapping-and-murders-as-ecuador-and-colombias-border-crisis-heightens'
+    m = Media.new url: url
+    d = m.as_json
+    assert_equal 'Kidnapping and murders as Ecuador and Colombia’s border crisis heightens · Global Voices', d['title']
+    assert_equal 'Reaching a peace agreement that puts an end to one of the oldest conflicts in the hemisphere is complicated by the murder of three members of the newspaper El Comercio.', d['description']
+    assert_equal '@sobretematicas', d['username']
+    assert_equal 'https://es.globalvoices.org/wp-content/uploads/2018/04/NosFaltan3-641x450.jpg', d['picture']
+    assert_equal 'https://twitter.com/sobretematicas', d['author_url']
+    assert_equal 'https://es.globalvoices.org/wp-content/uploads/2018/04/NosFaltan3-641x450.jpg', d['author_picture']
+    assert_equal '@globalvoices', d['author_name']
+    assert_not_nil d['published_at']
+  end
+
+  test "should parse twitter profile urls with mobile pattern" do
+    expected = 'https://twitter.com/meedan'
+    variations = %w(
+      0.twitter.com/meedan
+      m.twitter.com/meedan
+      mobile.twitter.com/meedan
+    )
+    variations.each do |url|
+      m = Media.new(url: url)
+      data = m.as_json
+      assert_equal expected, m.url
+      assert_equal 'twitter', data['provider']
+      assert_equal 'profile', data['type']
+      assert_equal 'meedan', data['title']
+      assert_equal '@meedan', data['username']
+      assert_equal 'meedan', data['author_name']
+      assert_not_nil data['description']
+      assert_not_nil data['picture']
+      assert_not_nil data['published_at']
+      assert_nil data['error']
+    end
+  end
+
+  test "should parse tweet urls with mobile pattern" do
+    expected = 'https://twitter.com/meedan/status/998945357001314304'
+    variations = %w(
+      0.twitter.com/meedan/status/998945357001314304
+      m.twitter.com/meedan/status/998945357001314304
+      mobile.twitter.com/meedan/status/998945357001314304
+    )
+    variations.each do |url|
+      m = Media.new(url: url)
+      data = m.as_json
+      assert_equal expected, m.url
+      assert_equal 'twitter', data['provider']
+      assert_equal 'item', data['type']
+      assert_match /A guide to anti-misinformation/, data['title']
+      assert_equal '@meedan', data['username']
+      assert_equal 'meedan', data['author_name']
+      assert_not_nil data['description']
+      assert_not_nil data['published_at']
+      assert_nil data['error']
+    end
+  end
+
+  test "should parse posts from twitter subdomains as page" do
+    variations = %w(
+      https://blog.twitter.com
+      https://blog.twitter.com/official/en_us/topics/events/2018/Embrace-Ramadan-with-various-Twitter-only-activations.html
+      https://business.twitter.com
+      https://business.twitter.com/en/blog/4-tips-Tweeting-live-events.html
+    )
+    variations.each do |url|
+      m = Media.new(url: url)
+      data = m.as_json
+      assert_equal 'page', data['provider']
+    end
   end
 
 end

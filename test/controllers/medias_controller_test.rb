@@ -56,7 +56,7 @@ class MediasControllerTest < ActionController::TestCase
 
   test "should ask to refresh cache with html format" do
     authenticate_with_token
-    url = 'https://new.speakbridge.io/medias/embed/viber/1/403'
+    url = 'https://speakbridge.io/medias/embed/viber/1/403'
     get :index, url: url, refresh: '1', format: :html
     name = Digest::MD5.hexdigest(url)
     cache_file = File.join('public', 'cache', Rails.env, "#{name}.html" )
@@ -69,7 +69,7 @@ class MediasControllerTest < ActionController::TestCase
 
   test "should not ask to refresh cache with html format" do
     authenticate_with_token
-    url = 'https://new.speakbridge.io/medias/embed/viber/1/403'
+    url = 'https://speakbridge.io/medias/embed/viber/1/403'
     name = Digest::MD5.hexdigest(url)
     cache_file = File.join('public', 'cache', Rails.env, "#{name}.html" )
     get :index, url: url, refresh: '0', format: :html
@@ -97,8 +97,7 @@ class MediasControllerTest < ActionController::TestCase
     get :index, url: 'https://www.facebook.com/blah_blah', format: :json
     assert_response 200
     data = JSON.parse(@response.body)['data']
-    assert_match /Koala::Facebook::ClientError: Unsupported get request/, data['error']['message']
-    assert_equal 100, data['error']['code']
+    assert_match 'Login required to see this profile', data['error']['message']
     assert_equal 'facebook', data['provider']
     assert_equal 'profile', data['type']
     assert_not_nil data['embed_tag']
@@ -106,7 +105,7 @@ class MediasControllerTest < ActionController::TestCase
 
   test "should return error message on hash if url does not exist 3" do
     authenticate_with_token
-    get :index, url: 'https://www.instagram.com/blih_blih/', format: :json
+    get :index, url: 'https://www.instagram.com/kjdahsjkdhasjdkhasjk/', format: :json
     assert_response 200
     data = JSON.parse(@response.body)['data']
     assert_equal 'RuntimeError: Could not parse this media', data['error']['message']
@@ -130,7 +129,7 @@ class MediasControllerTest < ActionController::TestCase
 
   test "should return error message on hash if url does not exist 5" do
     authenticate_with_token
-    get :index, url: 'http://foo.com/blah_blah', format: :json
+    get :index, url: 'http://example.com/blah_blah', format: :json
     assert_response 200
     data = JSON.parse(@response.body)['data']
     assert_equal 'RuntimeError: Could not parse this media', data['error']['message']
@@ -166,7 +165,7 @@ class MediasControllerTest < ActionController::TestCase
   test "should return error message on hash if url does not exist 8" do
     Media.any_instance.stubs(:as_json).raises(RuntimeError)
     authenticate_with_token
-    get :index, url: 'http://foo.com/blah_blah', format: :json
+    get :index, url: 'http://example.com/', format: :json
     assert_response 200
     data = JSON.parse(@response.body)['data']
     assert_equal 'RuntimeError', data['error']['message']
@@ -178,14 +177,12 @@ class MediasControllerTest < ActionController::TestCase
     get :index, url: 'https://www.facebook.com/non-sense-stuff-892173891273', format: :html
     assert_response 200
 
-    assert_match(/Koala::Facebook::ClientError: Unsupported get request/, assigns(:media).data['error']['message'])
-    assert_no_match(/Koala::Facebook::ClientError: Unsupported get request/, response.inspect)
-
+    assert_match('Login required to see this profile', assigns(:media).data['error']['message'])
   end
 
   test "should return message with HTML error 2" do
     File.stubs(:read).raises
-    get :index, url: 'http://foo.com/blah_blah', format: :html
+    get :index, url: 'http://example.com/', format: :html
     assert_response 200
 
     assert_match /Could not parse this media/, response.body
@@ -420,22 +417,20 @@ class MediasControllerTest < ActionController::TestCase
 
   test "should return invalid url when the certificate has error" do
     url = 'https://www.poynter.org/2017/european-policy-makers-are-not-done-with-facebook-google-and-fake-news-just-yet/465809/'
-    uri = URI.parse(URI.encode(url))
-    Media.stubs(:request_uri).with(uri, 'Head').raises(OpenSSL::SSL::SSLError)
+    Media.stubs(:request_url).with(url, 'Head').raises(OpenSSL::SSL::SSLError)
 
     authenticate_with_token
     get :index, url: url, format: :json
     assert_response 400
     assert_equal 'The URL is not valid', JSON.parse(response.body)['data']['message']
 
-    Media.unstub(:request_uri)
+    Media.unstub(:request_url)
   end
 
   test "should return invalid url if has SSL Error on follow_redirections" do
     url = 'https://asdfglkjh.ee'
     Media.stubs(:validate_url).with(url).returns(true)
-    uri = URI.parse(URI.encode(url))
-    Media.stubs(:request_uri).with(uri, 'Head').raises(OpenSSL::SSL::SSLError)
+    Media.stubs(:request_url).with(url, 'Head').raises(OpenSSL::SSL::SSLError)
 
     authenticate_with_token
     get :index, url: url, format: :json
@@ -443,7 +438,7 @@ class MediasControllerTest < ActionController::TestCase
     assert_equal 'The URL is not valid', JSON.parse(response.body)['data']['message']
 
     Media.unstub(:validate_url)
-    Media.unstub(:request_uri)
+    Media.unstub(:request_url)
   end
 
   test "should parse Facebook user profile with normalized urls" do
@@ -492,4 +487,13 @@ class MediasControllerTest < ActionController::TestCase
     get :index, url: url, format: :html
     assert_response 200
   end
+
+  test "should not parse url with userinfo" do
+    authenticate_with_token
+    url = 'http://noha@meedan.com'
+    get :index, url: url, format: :json
+    assert_response 400
+    assert_equal 'The URL is not valid', JSON.parse(response.body)['data']['message']
+  end
+
 end

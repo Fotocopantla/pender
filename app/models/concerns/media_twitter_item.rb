@@ -22,6 +22,7 @@ module MediaTwitterItem
 
   def data_from_twitter_item
     self.url = self.url.gsub(/(%23|#)!\//, '')
+    self.replace_subdomain_pattern
     parts = self.url.match(URL)
     user, id = parts['user'], parts['id']
     handle_twitter_exceptions do
@@ -65,7 +66,8 @@ module MediaTwitterItem
     return if username.blank?
     begin
       self.twitter_client.user(username).url.to_s
-    rescue Twitter::Error::NotFound
+    rescue Twitter::Error => e
+      Rails.logger.info "[Twitter URL] Cannot get twitter url of #{username}: #{e.class} - #{e.message}"
       nil
     end
   end
