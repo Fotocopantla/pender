@@ -33,6 +33,7 @@ class ActiveSupport::TestCase
   # This will run before any test
 
   def setup
+    puts "#{self.class.name}::#{self.method_name}"
     Sidekiq::Testing.inline!
     Rails.cache.clear if File.exists?(File.join(Rails.root, 'tmp', 'cache'))
     FileUtils.rm_rf File.join(Rails.root, 'public', 'cache', 'test')
