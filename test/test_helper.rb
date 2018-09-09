@@ -38,6 +38,7 @@ class ActiveSupport::TestCase
     Sidekiq::Testing.inline!
     Rails.cache.clear if File.exists?(File.join(Rails.root, 'tmp', 'cache'))
     FileUtils.rm_rf File.join(Rails.root, 'public', 'cache', 'test')
+    FileUtils.rm_rf(File.join(Rails.root, 'tmp', "cache<%= ENV['TEST_ENV_NUMBER'] %>", '*'))
     Rails.application.reload_routes!
     Media.any_instance.stubs(:archive_to_archive_is).returns(nil)
     Media.any_instance.stubs(:archive_to_video_vault).returns(nil)
